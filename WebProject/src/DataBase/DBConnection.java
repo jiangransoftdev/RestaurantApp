@@ -1,6 +1,9 @@
 package DataBase;
 import java.sql.*;
 import org.json.*;
+import Yelp.Restaurant;
+import Yelp.YelpAPI;
+
 import java.util.*;
 public class DBConnection {
 	private Connection conn = null;
@@ -9,12 +12,64 @@ public class DBConnection {
 	 	 try {
 	 		 Class.forName("com.mysql.jdbc.Driver").newInstance();
 	 		 conn = DriverManager
-	 				 .getConnection("jdbc:mysql://localhost:3306/mysql?"
+	 				 .getConnection("jdbc:mysql://ec2-35-161-62-175.us-west-2.compute.amazonaws.com:3306/mysql?"
 	 						 + "user=root&password=root");
 	 	 } catch (Exception e) {
 	 		 e.printStackTrace();
 	 	 }
 	  }
+	  public JSONArray GetRestaurantsNearLoationViaYelpAPI(double lat, double lon) {
+		   	 try {
+		   		 YelpAPI api = new YelpAPI();
+		   		 JSONObject response = new JSONObject(
+		   				 api.searchForBusinessesByLocation(lat, lon));
+		   		 JSONArray array = (JSONArray) response.get("businesses");
+		   		 if (conn == null) {
+		   			 return null;
+		   		 }
+		   		 Statement stmt = conn.createStatement();
+		   		 String sql = "";
+		   		 List<JSONObject> list = new ArrayList<JSONObject>();
+		   		 for (int i = 0; i < array.length(); i++) {
+		   			 JSONObject object = array.getJSONObject(i);
+		   			 Restaurant restaurant = new Restaurant(object);
+		   			 String business_id = restaurant.getBusinessId();
+		   			 String name = restaurant.getName();
+		   			 String categories = restaurant.getCategories();
+		   			 String city = restaurant.getCity();
+		   			 String state = restaurant.getState();
+		   			 String fullAddress = restaurant.getFullAddress();
+		   			 double stars = restaurant.getStars();
+		   			 double latitude = restaurant.getLatitude();
+		   			 double longitude = restaurant.getLongitude();
+		   			 String imageUrl = restaurant.getImageUrl();
+		   			 JSONObject obj = new JSONObject();
+		   			 obj.append("business_id", business_id);
+		   			 obj.append("name", name);
+		   			 obj.append("stars", stars);
+		   			 obj.append("latitude", latitude);
+		   			 obj.append("longitude", longitude);
+		   			 obj.append("full_address", fullAddress);
+		   			 obj.append("city", city);
+		   			 obj.append("state", state);
+		   			 obj.append("categories", categories);
+		   			 obj.append("image_url", imageUrl);
+		   			 sql = "INSERT IGNORE INTO RESTAURANTS " + "VALUES ('"
+		   					 + business_id + "', \"" + name + "\", \"" + categories
+		   					 + "\", '" + city + "', '" + state + "', " + stars
+		   					 + ", \"" + fullAddress + "\", " + latitude + ","
+		   					 + longitude + ",\"" + imageUrl + "\")";
+		   			 System.out.println(sql);
+		   			 stmt.executeUpdate(sql);
+		   			 list.add(obj);
+		   		 }
+		   		 return new JSONArray(list);
+		   	 } catch (Exception e) { /* report an error */
+		   		 System.out.println(e.getMessage());
+		   	 }
+		   	 return null;
+		    }
+
 	  public JSONArray GetRestaurantsNearLoation(double lat, double lon) {
 		  	 try {
 		  		 if (conn == null) {
